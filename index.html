@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>I Love You Sriyuu</title>
+<title>I Love You Sriyuu ❤️</title>
 
 <style>
     html, body {
@@ -24,7 +24,7 @@
         justify-content: center;
         align-items: center;
         flex-direction: column;
-        font-size: 28px;
+        font-size: 26px;
         text-align: center;
         z-index: 10;
     }
@@ -32,42 +32,40 @@
     #startBtn {
         margin-top: 20px;
         padding: 12px 30px;
-        font-size: 20px;
+        font-size: 18px;
         background: #ff2b6e;
         border: none;
         color: white;
         border-radius: 10px;
     }
 
-    canvas {
-        display: block;
-        position: fixed;
-        inset: 0;
-    }
-
-    /* TEXTS */
-    #textLoveYou {
+    #loveText {
         position: fixed;
         top: 40px;
         width: 100%;
         text-align: center;
         font-size: 40px;
-        color: #4db8ff;
-        text-shadow: 0 0 10px #4db8ff, 0 0 20px #4db8ff;
+        color: #66c5ff;
+        text-shadow: 0 0 15px #66c5ff;
         z-index: 5;
         display: none;
     }
 
-    #textSriyuu {
+    #sriyuuText {
         position: fixed;
         top: 100px;
         width: 100%;
         text-align: center;
         font-size: 32px;
         color: #ff66cc;
-        text-shadow: 0 0 10px #ff66cc, 0 0 20px #ff66cc;
+        text-shadow: 0 0 12px #ff66cc;
         z-index: 5;
         display: none;
+    }
+
+    canvas {
+        position: fixed;
+        inset: 0;
     }
 </style>
 </head>
@@ -80,37 +78,40 @@
     <button id="startBtn">Tap to Begin ❤️</button>
 </div>
 
-<div id="textLoveYou">I Love You</div>
-<div id="textSriyuu">SRIYUU</div>
+<!-- TEXTS -->
+<div id="loveText">I LOVE YOU</div>
+<div id="sriyuuText">SRIYUU</div>
 
+<!-- MUSIC -->
 <audio id="bgMusic" src="loveyou.mp3" loop></audio>
 
+<!-- CANVAS -->
 <canvas id="canvas"></canvas>
 
 <script>
-/* ----------------------
+/* ----------------------------------
    INTRO WITH MUSIC
----------------------- */
+---------------------------------- */
 const intro = document.getElementById("intro");
 const startBtn = document.getElementById("startBtn");
 const bgMusic = document.getElementById("bgMusic");
+const loveText = document.getElementById("loveText");
+const sriyuuText = document.getElementById("sriyuuText");
 
 startBtn.onclick = () => {
     intro.style.display = "none";
-
-    document.getElementById("textLoveYou").style.display = "block";
-    document.getElementById("textSriyuu").style.display = "block";
-
     bgMusic.play().catch(()=>{});
+    loveText.style.display = "block";
+    sriyuuText.style.display = "block";
 };
 
-/* ----------------------
-   PARTICLE HEART CANVAS
----------------------- */
+/* ----------------------------------
+   CANVAS SETUP
+---------------------------------- */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-
 let w, h;
+
 function resize() {
     w = canvas.width = window.innerWidth;
     h = canvas.height = window.innerHeight;
@@ -118,9 +119,20 @@ function resize() {
 resize();
 window.onresize = resize;
 
-function Point(x, y) {
-    this.x = x;
-    this.y = y;
+/* ----------------------------------
+   FIREWORKS ON TOUCH
+---------------------------------- */
+let touches = [];
+canvas.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    touches.push({ x: t.clientX, y: t.clientY, age: 0 });
+});
+
+/* ----------------------------------
+   PARTICLE ENGINE
+---------------------------------- */
+function Point(x = 0, y = 0) {
+    this.x = x; this.y = y;
 }
 
 function Particle() {
@@ -128,90 +140,200 @@ function Particle() {
     this.velocity = new Point();
     this.acceleration = new Point();
     this.age = 0;
+    this.size = 0;
+    this.color = "";
 }
 
-Particle.prototype.initialize = function(x, y, dx, dy) {
+Particle.prototype.initialize = function(x, y, dx, dy, color) {
     this.position.x = x;
     this.position.y = y;
     this.velocity.x = dx;
     this.velocity.y = dy;
-    this.acceleration.x = dx * 0.05;
-    this.acceleration.y = dy * 0.05;
+    this.acceleration.x = dx * 0.02;
+    this.acceleration.y = dy * 0.02;
     this.age = 0;
+    this.size = Math.random()*2 + 1;
+    this.color = color;
 };
 
-const particles = [];
-const maxParticles = 600;
+let particles = [];
+let fireflies = [];
+let floatingHearts = [];
+
+/* ----------------------------------
+   HEART FUNCTION
+---------------------------------- */
+function heartPoint(t) {
+    return {
+        x: 16 * Math.pow(Math.sin(t), 3),
+        y: 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)
+    };
+}
+
+/* ----------------------------------
+   CREATE HEART PARTICLES
+---------------------------------- */
+let heartMode = 0; // 0 = heart, 1 = I LOVE YOU, 2 = SRIYUU
+let lastSwitch = Date.now();
 
 function createHeartParticles() {
     const t = Math.random() * Math.PI * 2;
-    const r = 15 * (1 - Math.sin(t));
+    const p = heartPoint(t);
 
-    const x = r * Math.cos(t);
-    const y = -r * Math.sin(t);
+    const px = p.x * 13 + w/2;
+    const py = -p.y * 13 + h/2;
 
-    const px = x * 12 + w / 2;
-    const py = y * 12 + h / 2;
+    const dx = (Math.random()-0.5)*2;
+    const dy = (Math.random()-1.5)*2;
 
-    const p = new Particle();
-    p.initialize(px, py, (Math.random() - 0.5) * 2, -Math.random() * 3);
-    particles.push(p);
+    const particle = new Particle();
+    particle.initialize(px, py, dx, dy, getGlowColor());
+    particles.push(particle);
 }
 
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
+/* ----------------------------------
+   COLOR-CHANGING GLOW
+---------------------------------- */
+function getGlowColor() {
+    const colors = ["rgba(0,160,255,1)", "rgba(0,200,255,1)", "rgba(0,130,255,1)"];
+    return colors[Math.floor(Math.random()*colors.length)];
+}
+
+/* ----------------------------------
+   FIREWORKS
+---------------------------------- */
+function createFirework(x, y) {
+    for (let i=0; i<60; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 4 + 1;
+
+        const p = new Particle();
+        p.initialize(x, y, Math.cos(angle)*speed, Math.sin(angle)*speed, "rgba(255,150,255,1)");
+        particles.push(p);
+    }
+}
+
+/* ----------------------------------
+   FLOATING HEARTS
+---------------------------------- */
+function createFloatingHeart() {
+    const x = Math.random()*w;
+    const y = h + 20;
+
+    floatingHearts.push({
+        x, y,
+        size: Math.random()*12 + 8,
+        speed: Math.random()*1 + 0.5,
+        alpha: Math.random()*0.5 + 0.3
+    });
+}
+
+/* ----------------------------------
+   FIREFLIES
+---------------------------------- */
+function createFirefly() {
+    fireflies.push({
+        x: Math.random()*w,
+        y: Math.random()*h,
+        size: Math.random()*3 + 1,
+        dx: (Math.random()-0.5)*0.3,
+        dy: (Math.random()-0.5)*0.3
+    });
+}
+
+/* ----------------------------------
+   TEXT SWITCHING (every 5 sec)
+---------------------------------- */
+function switchHeartMode() {
+    const now = Date.now();
+    if (now - lastSwitch > 5000) {
+        heartMode = (heartMode+1) % 3;
+        lastSwitch = now;
+    }
+}
+
+/* ----------------------------------
+   DRAW EVERYTHING
+---------------------------------- */
+function loop() {
+    ctx.clearRect(0,0,w,h);
+
+    switchHeartMode();
+
+    /* HEART */
+    if (heartMode === 0) {
+        createHeartParticles();
+    }
+
+    /* INSIDE HEART TEXT */
+    if (heartMode === 1) {
+        drawInsideText("I LOVE YOU");
+    }
+    if (heartMode === 2) {
+        drawInsideText("SRIYUU");
+    }
+
+    /* FIREWORKS */
+    touches.forEach(t => {
+        createFirework(t.x, t.y);
+        t.age++;
+    });
+    touches = touches.filter(t => t.age < 2);
+
+    /* UPDATE PARTICLES */
+    particles = particles.filter(p => p.age < 120);
+    particles.forEach(p => {
         p.velocity.x += p.acceleration.x;
         p.velocity.y += p.acceleration.y;
         p.position.x += p.velocity.x;
         p.position.y += p.velocity.y;
         p.age++;
 
-        if (p.age > 100) {
-            particles.splice(i, 1);
-        }
-    }
-}
-
-function drawParticles() {
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.globalAlpha = 0.8;
-
-    for (let p of particles) {
-        const g = ctx.createRadialGradient(
-            p.position.x, p.position.y, 0,
-            p.position.x, p.position.y, 12
-        );
-        g.addColorStop(0, "rgba(0,150,255,1)");
-        g.addColorStop(1, "rgba(0,150,255,0)");
-        ctx.fillStyle = g;
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = 1 - p.age/120;
         ctx.beginPath();
-        ctx.arc(p.position.x, p.position.y, 8, 0, Math.PI * 2);
+        ctx.arc(p.position.x, p.position.y, p.size, 0, Math.PI*2);
         ctx.fill();
-    }
+    });
 
-    // glowing fountain
-    ctx.beginPath();
-    ctx.arc(w / 2, h / 2 + 150, 40, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,150,255,0.4)";
-    ctx.filter = "blur(20px)";
-    ctx.fill();
-    ctx.filter = "none";
-}
+    ctx.globalAlpha = 1;
 
-function loop() {
-    if (particles.length < maxParticles) {
-        createHeartParticles();
-    }
+    /* FLOATING HEARTS */
+    if (floatingHearts.length < 20) createFloatingHeart();
+    floatingHearts.forEach(hh => {
+        hh.y -= hh.speed;
+        hh.alpha -= 0.001;
+        ctx.fillStyle = "rgba(255,100,200," + hh.alpha + ")";
+        ctx.beginPath();
+        ctx.arc(hh.x, hh.y, hh.size, 0, Math.PI*2);
+        ctx.fill();
+    });
 
-    updateParticles();
-    drawParticles();
+    /* FIREFLIES */
+    if (fireflies.length < 40) createFirefly();
+    fireflies.forEach(fl => {
+        fl.x += fl.dx;
+        fl.y += fl.dy;
+        ctx.fillStyle = "rgba(255,255,200,0.6)";
+        ctx.beginPath();
+        ctx.arc(fl.x, fl.y, fl.size, 0, Math.PI*2);
+        ctx.fill();
+    });
 
     requestAnimationFrame(loop);
 }
+
+/* ----------------------------------
+   DRAW TEXT INSIDE HEART
+---------------------------------- */
+function drawInsideText(text) {
+    ctx.font = "28px Poppins";
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.textAlign = "center";
+    ctx.fillText(text, w/2, h/2);
+}
+
 loop();
 </script>
-
 </body>
 </html>
