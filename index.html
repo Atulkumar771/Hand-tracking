@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SRIYUU Love Particles</title>
+<title>I Love You Sriyuu</title>
 
 <style>
     html, body {
@@ -10,27 +11,10 @@
         padding: 0;
         overflow: hidden;
         background: black;
+        font-family: "Poppins", sans-serif;
     }
 
-    /* Fullscreen camera (selfie) */
-    #videoFeed {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scaleX(-1); /* Mirror like video call */
-        z-index: 1;
-    }
-
-    /* Particles canvas */
-    #canvas {
-        position: fixed;
-        inset: 0;
-        z-index: 2;
-    }
-
-    /* Intro screen */
+    /* INTRO SCREEN */
     #intro {
         position: fixed;
         inset: 0;
@@ -40,14 +24,14 @@
         justify-content: center;
         align-items: center;
         flex-direction: column;
-        z-index: 10;
         font-size: 28px;
         text-align: center;
+        z-index: 10;
     }
 
     #startBtn {
         margin-top: 20px;
-        padding: 12px 28px;
+        padding: 12px 30px;
         font-size: 20px;
         background: #ff2b6e;
         border: none;
@@ -55,246 +39,179 @@
         border-radius: 10px;
     }
 
-    #gesture {
+    canvas {
+        display: block;
         position: fixed;
-        bottom: 8px;
-        left: 8px;
-        color: white;
+        inset: 0;
+    }
+
+    /* TEXTS */
+    #textLoveYou {
+        position: fixed;
+        top: 40px;
+        width: 100%;
+        text-align: center;
+        font-size: 40px;
+        color: #4db8ff;
+        text-shadow: 0 0 10px #4db8ff, 0 0 20px #4db8ff;
         z-index: 5;
-        background: rgba(0,0,0,0.4);
-        padding: 5px 10px;
-        border-radius: 6px;
-        font-size: 14px;
+        display: none;
+    }
+
+    #textSriyuu {
+        position: fixed;
+        top: 100px;
+        width: 100%;
+        text-align: center;
+        font-size: 32px;
+        color: #ff66cc;
+        text-shadow: 0 0 10px #ff66cc, 0 0 20px #ff66cc;
+        z-index: 5;
+        display: none;
     }
 </style>
-
 </head>
+
 <body>
 
-<!-- INTRO SCREEN -->
+<!-- INTRO -->
 <div id="intro">
     <div>✨ MADE FOR SRIYUU ✨</div>
     <button id="startBtn">Tap to Begin ❤️</button>
 </div>
 
-<!-- MUSIC -->
+<div id="textLoveYou">I Love You</div>
+<div id="textSriyuu">SRIYUU</div>
+
 <audio id="bgMusic" src="loveyou.mp3" loop></audio>
 
-<!-- CAMERA -->
-<video id="videoFeed" autoplay playsinline></video>
-
-<!-- PARTICLES -->
 <canvas id="canvas"></canvas>
 
-<div id="gesture">Loading…</div>
-
-<!-- Import maps -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "@mediapipe/hands": "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
-  }
-}
-</script>
-
-<script type="module">
-import * as THREE from "three";
-import { Hands } from "@mediapipe/hands";
-
-/* -----------------------------------------
-   START BUTTON
-------------------------------------------*/
-let started = false;
+<script>
+/* ----------------------
+   INTRO WITH MUSIC
+---------------------- */
 const intro = document.getElementById("intro");
 const startBtn = document.getElementById("startBtn");
 const bgMusic = document.getElementById("bgMusic");
-const videoFeed = document.getElementById("videoFeed");
 
-startBtn.onclick = async () => {
+startBtn.onclick = () => {
     intro.style.display = "none";
 
-    try { await bgMusic.play(); } catch {}
+    document.getElementById("textLoveYou").style.display = "block";
+    document.getElementById("textSriyuu").style.display = "block";
 
-    startCamera();
-    started = true;
+    bgMusic.play().catch(()=>{});
 };
 
-/* -----------------------------------------
-   CAMERA
-------------------------------------------*/
-function startCamera() {
-    navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-        audio: false
-    }).then(stream => {
-        videoFeed.srcObject = stream;
-    });
+/* ----------------------
+   PARTICLE HEART CANVAS
+---------------------- */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
+
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
 }
 
-/* -----------------------------------------
-   THREE.JS SETUP
-------------------------------------------*/
-const canvas = document.getElementById("canvas");
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+function Particle() {
+    this.position = new Point();
+    this.velocity = new Point();
+    this.acceleration = new Point();
+    this.age = 0;
+}
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-);
-camera.position.z = 90;
+Particle.prototype.initialize = function(x, y, dx, dy) {
+    this.position.x = x;
+    this.position.y = y;
+    this.velocity.x = dx;
+    this.velocity.y = dy;
+    this.acceleration.x = dx * 0.05;
+    this.acceleration.y = dy * 0.05;
+    this.age = 0;
+};
 
-window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
+const particles = [];
+const maxParticles = 600;
 
-/* -----------------------------------------
-   PARTICLE MATERIALS
-------------------------------------------*/
-const matBlue = new THREE.PointsMaterial({ color: 0x33aaff, size: 1.6 });
-const matPink = new THREE.PointsMaterial({ color: 0xff55aa, size: 1.6 });
-const matHeart = new THREE.PointsMaterial({ color: 0xff0000, size: 1.8 });
-const matBG = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+function createHeartParticles() {
+    const t = Math.random() * Math.PI * 2;
+    const r = 15 * (1 - Math.sin(t));
 
-/* -----------------------------------------
-   TEXT TO PARTICLES
-------------------------------------------*/
-function makeText(text, material, yOff) {
-    const c = document.createElement("canvas");
-    const ctx = c.getContext("2d");
-    c.width = 800;
-    c.height = 200;
+    const x = r * Math.cos(t);
+    const y = -r * Math.sin(t);
 
-    ctx.font = "120px Arial Black";
-    ctx.fillStyle = "white";
-    ctx.fillText(text, 50, 150);
+    const px = x * 12 + w / 2;
+    const py = y * 12 + h / 2;
 
-    let pos = [];
-    const img = ctx.getImageData(50,0,c.width,c.height).data;
+    const p = new Particle();
+    p.initialize(px, py, (Math.random() - 0.5) * 2, -Math.random() * 3);
+    particles.push(p);
+}
 
-    for (let y=0; y<200; y+=4){
-        for (let x=0; x<800; x+=4){
-            const a = img[(y*800 + x)*4 + 3];
-            if (a > 128){
-                pos.push(x-350, -(y-100)+yOff, 0);
-            }
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.velocity.x += p.acceleration.x;
+        p.velocity.y += p.acceleration.y;
+        p.position.x += p.velocity.x;
+        p.position.y += p.velocity.y;
+        p.age++;
+
+        if (p.age > 100) {
+            particles.splice(i, 1);
         }
     }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    return new THREE.Points(geo, material);
 }
 
-/* -----------------------------------------
-   HEART SHAPE
-------------------------------------------*/
-function makeHeart() {
-    let pos = [];
-    for (let t=0; t<Math.PI*2; t+=0.02){
-        let x = 16*Math.pow(Math.sin(t),3);
-        let y = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t);
-        pos.push(x*3, y*3 - 40, 0);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    return new THREE.Points(geo, matHeart);
-}
+function drawParticles() {
+    ctx.clearRect(0, 0, w, h);
 
-/* -----------------------------------------
-   CREATE OBJECTS
-------------------------------------------*/
-const txtLove = makeText("I LOVE YOU", matBlue, 40);
-const txtSri  = makeText("SRIYUU", matPink, -10);
-const heart   = makeHeart();
+    ctx.globalAlpha = 0.8;
 
-// background random particles
-let bgPos = [];
-for (let i=0; i<2000; i++){
-    bgPos.push(
-        (Math.random()*400)-200,
-        (Math.random()*400)-200,
-        (Math.random()*200)-100
-    );
-}
-const bgGeo = new THREE.BufferGeometry();
-bgGeo.setAttribute("position", new THREE.Float32BufferAttribute(bgPos, 3));
-const bgParticles = new THREE.Points(bgGeo, matBG);
-
-scene.add(bgParticles, txtLove, txtSri, heart);
-
-/* -----------------------------------------
-   HAND TRACKING
-------------------------------------------*/
-let handX = 0, handY = 0;
-
-const hands = new Hands({
-    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
-
-hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.6
-});
-
-hands.onResults(res => {
-    if (res.multiHandLandmarks.length > 0){
-        let p = res.multiHandLandmarks[0][9];
-
-        // FIXED: Not reversed anymore
-        handX = -(p.x - 0.5) * 80;
-        handY = -(p.y - 0.5) * 80;
-    }
-});
-
-// hidden canvas for processing frames
-const hiddenCanvas = document.createElement("canvas");
-const hiddenCtx = hiddenCanvas.getContext("2d");
-
-function processFrame(){
-    if (videoFeed.readyState >= 2){
-        hiddenCanvas.width  = videoFeed.videoWidth;
-        hiddenCanvas.height = videoFeed.videoHeight;
-        hiddenCtx.drawImage(videoFeed, 0, 0);
-        hands.send({ image: hiddenCanvas });
-    }
-    requestAnimationFrame(processFrame);
-}
-processFrame();
-
-/* -----------------------------------------
-   ANIMATION LOOP
-------------------------------------------*/
-function animate() {
-    requestAnimationFrame(animate);
-
-    if (started){
-        txtLove.position.x += (handX - txtLove.position.x)*0.05;
-        txtLove.position.y += (handY - txtLove.position.y)*0.05;
-
-        txtSri.position.x += (handX - txtSri.position.x)*0.05;
-        txtSri.position.y += (handY - txtSri.position.y)*0.05;
-
-        heart.position.x += (handX - heart.position.x)*0.05;
-        heart.position.y += (handY - heart.position.y)*0.05;
+    for (let p of particles) {
+        const g = ctx.createRadialGradient(
+            p.position.x, p.position.y, 0,
+            p.position.x, p.position.y, 12
+        );
+        g.addColorStop(0, "rgba(0,150,255,1)");
+        g.addColorStop(1, "rgba(0,150,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(p.position.x, p.position.y, 8, 0, Math.PI * 2);
+        ctx.fill();
     }
 
-    bgParticles.rotation.y += 0.0005;
-    bgParticles.rotation.x += 0.0003;
-
-    renderer.render(scene, camera);
+    // glowing fountain
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2 + 150, 40, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,150,255,0.4)";
+    ctx.filter = "blur(20px)";
+    ctx.fill();
+    ctx.filter = "none";
 }
 
-animate();
+function loop() {
+    if (particles.length < maxParticles) {
+        createHeartParticles();
+    }
+
+    updateParticles();
+    drawParticles();
+
+    requestAnimationFrame(loop);
+}
+loop();
 </script>
+
 </body>
 </html>
