@@ -1,80 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SRIYUU Love Particles</title>
 
 <style>
-    body {
+    html, body {
         margin: 0;
+        padding: 0;
         overflow: hidden;
-        background: #000;
-        font-family: 'Arial', sans-serif;
+        background: black;
     }
 
-    /* ------- Intro Screen ------- */
+    /* Fullscreen camera */
+    #videoFeed {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 1;
+    }
+
+    /* Canvas for particles */
+    #canvas {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+    }
+
+    /* Intro overlay */
     #intro {
         position: fixed;
         inset: 0;
-        background: black;
+        background: rgba(0,0,0,0.9);
         color: white;
         display: flex;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
+        flex-direction: column;
+        z-index: 10;
+        font-size: 26px;
         text-align: center;
-        z-index: 20;
-        font-size: 30px;
-        letter-spacing: 2px;
-        animation: fadein 1.5s ease-in-out;
     }
 
     #startBtn {
-        margin-top: 30px;
-        padding: 12px 25px;
+        margin-top: 20px;
+        padding: 12px 28px;
         font-size: 20px;
         background: #ff2b6e;
         border: none;
-        border-radius: 10px;
         color: white;
-    }
-
-    @keyframes fadein {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        border-radius: 10px;
     }
 
     #gesture {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        padding: 8px 12px;
+        position: fixed;
+        bottom: 8px;
+        left: 8px;
         color: white;
+        z-index: 5;
         background: rgba(0,0,0,0.4);
-        border-radius: 5px;
-        z-index: 10;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 14px;
     }
 </style>
-</head>
 
+</head>
 <body>
 
+<!-- INTRO -->
 <div id="intro">
     <div>✨ MADE FOR SRIYUU ✨</div>
     <button id="startBtn">Tap to Begin ❤️</button>
 </div>
 
+<!-- MUSIC -->
 <audio id="bgMusic" src="loveyou.mp3" loop></audio>
 
+<!-- VISIBLE CAMERA -->
+<video id="videoFeed" autoplay playsinline></video>
+
+<!-- PARTICLES -->
 <canvas id="canvas"></canvas>
+
 <div id="gesture">Loading…</div>
 
+<!-- IMPORT MAPS -->
 <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/examples/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
     "@mediapipe/hands": "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
   }
 }
@@ -86,53 +103,80 @@ import { Hands } from "@mediapipe/hands";
 
 let started = false;
 
+// Elements
 const intro = document.getElementById("intro");
 const startBtn = document.getElementById("startBtn");
 const bgMusic = document.getElementById("bgMusic");
+const videoFeed = document.getElementById("videoFeed");
 
-// Start website
-startBtn.onclick = () => {
+// Start button
+startBtn.onclick = async () => {
     intro.style.display = "none";
-    bgMusic.play().catch(()=>{});
+
+    // Start music
+    try { await bgMusic.play(); } catch {}
+
+    startCamera();
     started = true;
 };
 
-// THREE.js Setup
-const canvas = document.getElementById("canvas");
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+// Start camera
+function startCamera() {
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+    }).then(stream => {
+        videoFeed.srcObject = stream;
+    });
+}
 
+// THREE.js setup
+const canvas = document.getElementById("canvas");
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+
+const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-    75, window.innerWidth/window.innerHeight, 0.1, 1000
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
 );
 camera.position.z = 90;
 
-const renderer = new THREE.WebGLRenderer({ canvas });
-renderer.setSize(window.innerWidth, window.innerHeight);
+// Resize support portrait + landscape
+window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-// Particle Materials
-const matBlue = new THREE.PointsMaterial({ color: 0x33aaff, size: 1.4 });
-const matPink = new THREE.PointsMaterial({ color: 0xff5abf, size: 1.4 });
-const matHeart = new THREE.PointsMaterial({ color: 0xff0000, size: 1.8 });
-const matBG = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+// Particle materials
+const blueMat = new THREE.PointsMaterial({ color: 0x33aaff, size: 1.6 });
+const pinkMat = new THREE.PointsMaterial({ color: 0xff55aa, size: 1.6 });
+const heartMat = new THREE.PointsMaterial({ color: 0xff0000, size: 1.8 });
+const bgMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
 
-// Convert Text → Particles
-function textToParticles(text, material, yOffset) {
+// Convert text → particles
+function makeText(text, material, yOff) {
     const c = document.createElement("canvas");
     const ctx = c.getContext("2d");
-    c.width = 800; c.height = 200;
+    c.width = 800;
+    c.height = 200;
 
-    ctx.fillStyle = "white";
     ctx.font = "120px Arial Black";
+    ctx.fillStyle = "white";
     ctx.fillText(text, 50, 150);
 
-    const img = ctx.getImageData(0, 0, c.width, c.height);
     let pos = [];
+    const img = ctx.getImageData(0,0,c.width,c.height).data;
 
-    for (let y = 0; y < img.height; y += 4) {
-        for (let x = 0; x < img.width; x += 4) {
-            if (img.data[(y * img.width + x)*4 + 3] > 128) {
-                pos.push(x - 350, -(y - 100) + yOffset, 0);
+    for (let y=0; y<200; y+=4){
+        for (let x=0; x<800; x+=4){
+            const a = img[(y*800 + x)*4 + 3];
+            if (a > 128){
+                pos.push(x-350, -(y-100)+yOff, 0);
             }
         }
     }
@@ -142,27 +186,27 @@ function textToParticles(text, material, yOffset) {
     return new THREE.Points(geo, material);
 }
 
-// Heart Shape (particle)
-function heartShape() {
+// Heart shape
+function makeHeart() {
     let pos = [];
-    for (let t = 0; t < Math.PI * 2; t += 0.02) {
-        let x = 16 * Math.pow(Math.sin(t), 3);
-        let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2*Math.cos(3*t);
-        pos.push(x * 3, y * 3 - 40, 0);
+    for (let t=0; t<Math.PI*2; t+=0.02){
+        let x = 16*Math.pow(Math.sin(t),3);
+        let y = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t);
+        pos.push(x*3, y*3 - 40, 0);
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    return new THREE.Points(geo, matHeart);
+    return new THREE.Points(geo, heartMat);
 }
 
-// Create Main Objects
-const txtLove = textToParticles("I LOVE YOU", matBlue, 40);
-const txtSri = textToParticles("SRIYUU", matPink, -10);
-const heart = heartShape();
+// Create objects
+const txtLove = makeText("I LOVE YOU", blueMat, 40);
+const txtSri  = makeText("SRIYUU", pinkMat, -10);
+const heart   = makeHeart();
 
-// Floating background particles
+// Floating background
 let bgPos = [];
-for (let i = 0; i < 2000; i++) {
+for (let i=0; i<2000; i++){
     bgPos.push(
         (Math.random()*400)-200,
         (Math.random()*400)-200,
@@ -171,16 +215,18 @@ for (let i = 0; i < 2000; i++) {
 }
 const bgGeo = new THREE.BufferGeometry();
 bgGeo.setAttribute("position", new THREE.Float32BufferAttribute(bgPos, 3));
-const bgParticles = new THREE.Points(bgGeo, matBG);
+const bgParticles = new THREE.Points(bgGeo, bgMat);
 
+// Add to scene
 scene.add(bgParticles, txtLove, txtSri, heart);
 
-// Hand Tracking
+// Hand-tracking
 let handX = 0, handY = 0;
 
 const hands = new Hands({
-    locateFile: (file)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
+
 hands.setOptions({
     maxNumHands: 1,
     modelComplexity: 1,
@@ -188,48 +234,34 @@ hands.setOptions({
     minTrackingConfidence: 0.6
 });
 
-hands.onResults((results)=>{
-    if(results.multiHandLandmarks.length>0){
-        let cx = results.multiHandLandmarks[0][9].x;
-        let cy = results.multiHandLandmarks[0][9].y;
-
-        handX = (cx - 0.5) * 80;
-        handY = -(cy - 0.5) * 80;
+hands.onResults(res => {
+    if (res.multiHandLandmarks.length > 0){
+        let p = res.multiHandLandmarks[0][9];
+        handX = (p.x - 0.5) * 80;
+        handY = -(p.y - 0.5) * 80;
     }
 });
 
-// Camera Input
-const video = document.createElement("video");
-video.style.display = "none";
-document.body.appendChild(video);
+// MediaPipe processing loop
+const hiddenCanvas = document.createElement("canvas");
+const hiddenCtx = hiddenCanvas.getContext("2d");
 
-navigator.mediaDevices.getUserMedia({video:true}).then(stream=>{
-    video.srcObject = stream;
-    video.play();
-    const loop = () => {
-        hands.send({image: video});
-        requestAnimationFrame(loop);
-    };
-    loop();
-});
+function processFrame(){
+    if (videoFeed.readyState >= 2){
+        hiddenCanvas.width = videoFeed.videoWidth;
+        hiddenCanvas.height = videoFeed.videoHeight;
+        hiddenCtx.drawImage(videoFeed, 0,0);
+        hands.send({ image: hiddenCanvas });
+    }
+    requestAnimationFrame(processFrame);
+}
+processFrame();
 
-// ANIMATIONS
-txtLove.scale.set(0.01, 0.01, 0.01);
-txtSri.scale.set(0.01, 0.01, 0.01);
-heart.scale.set(0.01, 0.01, 0.01);
-
-// animate in
-setTimeout(()=>{
-    txtLove.scale.set(1,1,1);
-    txtSri.scale.set(1,1,1);
-    heart.scale.set(1,1,1);
-}, 1000);
-
-// Render Loop
-function animate(){
+// Smooth animation
+function animate() {
     requestAnimationFrame(animate);
 
-    if(started){
+    if (started){
         txtLove.position.x += (handX - txtLove.position.x)*0.05;
         txtLove.position.y += (handY - txtLove.position.y)*0.05;
 
@@ -241,12 +273,13 @@ function animate(){
     }
 
     bgParticles.rotation.y += 0.0005;
-    bgParticles.rotation.x += 0.0002;
+    bgParticles.rotation.x += 0.0003;
 
     renderer.render(scene, camera);
 }
-animate();
 
+animate();
 </script>
+
 </body>
 </html>
